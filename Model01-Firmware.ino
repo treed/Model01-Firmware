@@ -16,8 +16,12 @@
 // The Kaleidoscope core
 #include "Kaleidoscope.h"
 
+#include <Kaleidoscope-HostPowerManagement.h>
+
 // Support for keys that move the mouse
 #include "Kaleidoscope-MouseKeys.h"
+
+#include <Kaleidoscope-ShapeShifter.h>
 
 // Support for macros
 #include "Kaleidoscope-Macros.h"
@@ -27,8 +31,7 @@
 
 #include "Kaleidoscope-LEDEffect-SolidColor.h"
 
-// Support for "Numlock" mode, which is mostly just the Numlock specific LED mode
-#include "Kaleidoscope-Numlock.h"
+#include "Kaleidoscope-NumPad.h"
 
 // Support for an "LED off mode"
 #include "LED-Off.h"
@@ -38,6 +41,21 @@
 
 // Support for an LED mode that prints the keys you press in letters 4px high
 #include "Kaleidoscope-LED-AlphaSquare.h"
+
+void hostPowerManagementEventHandler(kaleidoscope::HostPowerManagement::Event event) {
+  switch (event) {
+  case kaleidoscope::HostPowerManagement::Sleep:
+  case kaleidoscope::HostPowerManagement::Suspend:
+    LEDControl.paused = true;
+    LEDControl.set_all_leds_to({0, 0, 0});
+    LEDControl.syncLeds();
+    break;
+  case kaleidoscope::HostPowerManagement::Resume:
+    LEDControl.paused = false;
+    LEDControl.refreshAll();
+    break;
+  }
+}
 
 /** This 'enum' is a list of all the macros used by the Model 01's firmware
   * The names aren't particularly important. What is important is that each
@@ -116,7 +134,7 @@ const Key keymaps[][ROWS][COLS] PROGMEM = {
    Key_LeftControl, Key_Backspace, Key_LeftGui, Key_LeftShift,
    ShiftToLayer(KEYMAP_FUNCTION),
 
-   M(MACRO_ANY),  Key_6, Key_7, Key_8, Key_9, Key_0, Key_KeypadNumLock,
+   M(MACRO_ANY),  Key_6, Key_7, Key_8, Key_9, Key_0, LockLayer(KEYMAP_NUMPAD),
    Key_Enter,     Key_F, Key_G, Key_C, Key_R, Key_L, Key_Slash,
                   Key_D, Key_H, Key_T, Key_N, Key_S, Key_Minus,
    Key_RightAlt,  Key_B, Key_M, Key_W, Key_V, Key_Z, Key_Backslash,
@@ -147,16 +165,24 @@ const Key keymaps[][ROWS][COLS] PROGMEM = {
    ___, ___, ___, ___,
    ___,
 
-   M(MACRO_VERSION_INFO),  ___, Key_Keypad7, Key_Keypad8,   Key_Keypad9,        Key_KeypadSubtract, ___,
-   ___,                    ___, Key_Keypad4, Key_Keypad5,   Key_Keypad6,        Key_KeypadAdd,      ___,
-                           ___, Key_Keypad1, Key_Keypad2,   Key_Keypad3,        Key_Equals,         Key_Quote,
-   ___,                    ___, Key_Keypad0, Key_KeypadDot, Key_KeypadMultiply, Key_KeypadDivide,   Key_Enter,
-   ___, ___, ___, ___,
+   M(MACRO_VERSION_INFO),  ___, ___        , Key_KeypadDivide, Key_KeypadMultiply, Key_KeypadSubtract, ___,
+   ___,                    ___, Key_Keypad7, Key_Keypad8,      Key_Keypad9,        Key_KeypadAdd,      ___,
+                           ___, Key_Keypad4, Key_Keypad5,      Key_Keypad6,        Key_Equals,         Key_Quote,
+   ___,                    ___, Key_Keypad1, Key_Keypad2,      Key_Keypad3,        Key_KeypadDot,   Key_Enter,
+   ___, ___, ___, Key_Keypad0,
    ___)
 };
 
 /* Re-enable astyle's indent enforcement */
 // *INDENT-ON*
+
+static const kaleidoscope::ShapeShifter::dictionary_t shape_shift_dictionary[] PROGMEM = {
+   {Key_mouseUp, Key_mouseScrollUp},
+   {Key_mouseDn, Key_mouseScrollDn},
+   {Key_mouseL, Key_mouseScrollL},
+   {Key_mouseR, Key_mouseScrollR},
+   {Key_NoKey, Key_NoKey}
+};
 
 /** versionInfoMacro handles the 'firmware version info' macro
  *  When a key bound to the macro is pressed, this macro
@@ -237,12 +263,8 @@ static kaleidoscope::LEDSolidColor solidViolet(130, 0, 120);
   */
 
 void setup() {
-  // First, call Kaleidoscope's internal setup function
   Kaleidoscope.setup();
 
-  // Next, tell Kaleidoscope which plugins you want to use.
-  // The order can be important. For example, LED effects are
-  // added in the order they're listed here.
   Kaleidoscope.use(
     // LEDControl provides support for other LED modes
     &LEDControl,
@@ -251,18 +273,20 @@ void setup() {
     // and slowly moves the rainbow across your keyboard
     &LEDRainbowWaveEffect,
 
-    // The numlock plugin is responsible for lighting up the 'numpad' mode
-    // with a custom LED effect
-    &NumLock,
+    &NumPad,
 
     // The macros plugin adds support for macros
     &Macros,
 
+    &ShapeShifter,
     // The MouseKeys plugin lets you add keys to your keymap which move the mouse.
-    &MouseKeys
+    &MouseKeys,
+    &HostPowerManagement
+
   );
 
-  NumLock.numPadLayer = KEYMAP_NUMPAD;
+  NumPad.numPadLayer = KEYMAP_NUMPAD;
+  ShapeShifter.dictionary = shape_shift_dictionary;
 
   // We configure the AlphaSquare effect to use RED letters
   AlphaSquare.color = { 255, 0, 0 };
