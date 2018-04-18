@@ -169,7 +169,7 @@ const Key keymaps[][ROWS][COLS] PROGMEM = {
    ___,                    ___, Key_Keypad7, Key_Keypad8,      Key_Keypad9,        Key_KeypadAdd,      ___,
                            ___, Key_Keypad4, Key_Keypad5,      Key_Keypad6,        Key_Equals,         Key_Quote,
    ___,                    ___, Key_Keypad1, Key_Keypad2,      Key_Keypad3,        Key_KeypadDot,   Key_Enter,
-   ___, ___, ___, Key_Keypad0,
+   ___, Key_Backspace, ___, Key_Keypad0,
    ___)
 };
 
